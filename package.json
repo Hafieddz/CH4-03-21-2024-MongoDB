@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "start" : "node server.js",
     "dev": "nodemon server.js",
     "import-data" : "node ./data/seeder.js --import",
     "delete-data" : "node ./data/seeder.js --delete"

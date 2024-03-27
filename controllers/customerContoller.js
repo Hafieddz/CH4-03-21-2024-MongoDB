@@ -2,13 +2,50 @@ const Customer = require("../models/customerModel");
 
 const getCustomers = async (req, res) => {
   try {
-    const queryObject = {...req.query}
-    const excludedColumn = ['page', 'sort', 'limit', 'fields']
-    excludedColumn.forEach(el => delete queryObject[el]);
+    const queryObject = { ...req.query };
+    const excludedColumn = ["page", "sort", "limit", "fields"];
+    excludedColumn.forEach((el) => delete queryObject[el]);
 
-    console.log(req.query, queryObject);
+    let queryStr = JSON.stringify(queryObject);
+    // Regex Query
+    queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`);
+    queryStr = JSON.parse(queryStr);
 
-    const customers = await Customer.find(queryObject);
+    let query = Customer.find(queryStr);
+
+    // Sort Query
+    if (req.query.sort) {
+      const sortBy = req.query.sort.split(",").join(" ");
+      console.log(sortBy);
+      query = query.sort(sortBy);
+    } else {
+      query = query.sort("-createdAt");
+    }
+
+    // Field Limiting Query
+    if (req.query.fields) {
+      const fields = req.query.fields.split(",").join(" ");
+      query = query.select(fields);
+    } else {
+      query = query.select("-__v");
+    }
+
+    // Pagination
+    const page = req.query.page * 1 || 0;
+    const limit = req.query.limit * 1 || 0;
+    const skip = (page - 1) * limit;
+
+    query = query.skip(skip).limit(limit);
+
+    if(req.query.page) {
+      const numCustomers = await Customer.countDocuments();
+      if(skip > numCustomers ) {
+        throw new Error("Page does not exist!");
+      } 
+    }
+
+    // Exec the query..
+    const customers = await query;
 
     res.status(200).json({
       status: "success",
@@ -68,7 +105,7 @@ const updateCustomer = async (req, res) => {
     });
   }
 };
- 
+
 const deleteCustomer = async (req, res) => {
   try {
     const id = req.params.id;
